@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Викторина о дорожном движении</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f9ff;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+    h1 {
+      color: #0077cc;
+    }
+    .quiz-container {
+      background: white;
+      border-radius: 10px;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      position: relative;
+      z-index: 1;
+    }
+    .progress-container {
+      width: 100%;
+      background-color: #e6f3ff;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 20px;
+      background-color: #0077cc;
+      border-radius: 10px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    .progress-text {
+      margin-top: 5px;
+      font-size: 14px;
+      color: #555;
+    }
+    .question {
+      font-size: 18px;
+      margin-bottom: 15px;
+    }
+    .answers button {
+      display: block;
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border: 2px solid #0077cc;
+      border-radius: 5px;
+      background: #e6f3ff;
+      transition: 0.3s;
+    }
+    .answers button:hover {
+      background: #cce6ff;
+    }
+    #nextBtn {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      display: none;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #result {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 15px;
+    }
+    #wrongAnswers {
+      text-align: left;
+      margin-top: 20px;
+      font-size: 16px;
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    /* Стили для полицейского */
+    .police-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.5s ease;
+    }
+    .police-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .police-image {
+      width: 300px;
+      height: 400px;
+      background: url('https://foni.papik.pro/uploads/posts/2024-10/foni-papik-pro-aypc-p-kartinki-gaishnik-na-prozrachnom-fone-16.png') no-repeat center center;
+      background-size: contain;
+      margin-bottom: 30px;
+      filter: drop-shadow(0 0 20px rgba(0, 119, 204, 0.7));
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+    .police-message {
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      background: rgba(0, 119, 204, 0.9);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 400px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    .continue-btn {
+      margin-top: 20px;
+      padding: 15px 30px;
+      font-size: 18px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .continue-btn:hover {
+      background: #45a049;
+    }
+    /* Салют */
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚦 Викторина о дорожном движении</h1>
+  <div class="quiz-container">
+    <!-- Progress Bar -->
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="progress-text" id="progressText">Вопрос 1 из 24</div>
+    
+    <div id="quiz">
+      <p class="question" id="question">Вопрос появится здесь</p>
+      <div class="answers" id="answers"></div>
+      <button id="nextBtn">Следующий</button>
+      <p id="result"></p>
+      <div id="wrongAnswers"></div>
+    </div>
+  </div>
+
+  <!-- Оверлей с полицейским -->
+  <div class="police-overlay" id="policeOverlay">
+    <div class="police-image"></div>
+    <div class="police-message">Нужно выучить правила дорожного движения!</div>
+    <button class="continue-btn" id="continueBtn">Нажми, чтобы посмотреть результаты</button>
+  </div>
+
+  <canvas id="fireworks"></canvas>
+
+  <script>
+    const quizData = [
+      { question: "Что означает красный сигнал светофора?", answers: ["Можно идти", "Нужно стоять", "Бежать быстрее"], correct: 1 },
+      { question: "Как правильно переходить дорогу?", answers: ["Где удобно", "По пешеходному переходу", "В любом месте"], correct: 1 },
+      { question: "Что должен сделать пешеход перед переходом дороги?", answers: ["Посмотреть по сторонам", "Закрыть глаза", "Побежать быстро"], correct: 0 },
+      { question: "Что означает жёлтый сигнал светофора?", answers: ["Готовься к движению или остановке", "Можно переходить", "Опасности нет"], correct: 0 },
+      { question: "Как называется место, где пешеходы переходят дорогу?", answers: ["Зебра", "Тротуар", "Остановка"], correct: 0 },
+      { question: "Где должны ходить пешеходы?", answers: ["По тротуару", "По проезжей части", "Посередине дороги"], correct: 0 },
+      { question: "Что означает зелёный сигнал светофора?", answers: ["Можно идти", "Нужно стоять", "Опасность"], correct: 0 },
+      { question: "Можно ли играть на проезжей части?", answers: ["Да", "Нет", "Только днём"], correct: 1 },
+      { question: "Что нужно сделать, если мяч укатился на дорогу?", answers: ["Выбежать за ним", "Позвать взрослого", "Быстро забрать"], correct: 1 },
+      { question: "Какой сигнал подаёт регулировщик с поднятой рукой вверх?", answers: ["Стоп, движение запрещено", "Можно идти", "Можно ехать только прямо"], correct: 0 },
+      { question: "Что означает дорожный знак 'Пешеходный переход'?", answers: ["Здесь можно переходить дорогу", "Здесь нельзя переходить", "Опасное место"], correct: 0 },
+      { question: "Что нужно делать при посадке в автобус?", answers: ["Толкаться", "Ждать, пока автобус остановится", "Забегать вперёд"], correct: 1 },
+      { question: "Можно ли переходить дорогу на красный сигнал, если машин нет?", answers: ["Да", "Нет", "Иногда"], correct: 1 },
+      { question: "Что нужно делать, если загорелся зелёный свет, но машины ещё едут?", answers: ["Идти сразу", "Подождать, пока машины остановятся", "Бежать быстро"], correct: 1 },
+      { question: "Как называется часть дороги для машин?", answers: ["Тротуар", "Проезжая часть", "Обочина"], correct: 1 },
+      { question: "Как должен вести себя пассажир в машине?", answers: ["Пристегнуться ремнём безопасности", "Ходить по салону", "Громко кричать"], correct: 0 },
+      { question: "Можно ли кататься на велосипеде по проезжей части детям младше 14 лет?", answers: ["Да", "Нет", "Только с друзьями"], correct: 1 },
+      { question: "Что означает мигающий зелёный сигнал светофора?", answers: ["Скоро загорится красный", "Можно идти долго", "Опасность"], correct: 0 },
+      { question: "Как нужно обходить автобус, если он стоит на остановке?", answers: ["Сзади", "Спереди, убедившись в безопасности", "Как угодно"], correct: 0 },
+      { question: "Кого называют пешеходом?", answers: ["Человека, который идёт пешком", "Водителя", "Пассажира"], correct: 0 },
+      { question: "Какой знак предупреждает о детях на дороге?", answers: ["Треугольный с детьми", "Круглый с машиной", "Синий с автобусом"], correct: 0 },
+      { question: "Где безопаснее всего ждать автобус?", answers: ["На проезжей части", "На остановке", "Посреди дороги"], correct: 1 },
+      { question: "Что означает дорожный знак с изображением велосипеда?", answers: ["Велосипедная дорожка", "Запрещено ездить на велосипеде", "Парковка"], correct: 0 },
+      { question: "Какой транспорт имеет право ехать с сиреной и маячками?", answers: ["Автобус", "Скорая помощь, полиция, пожарная машина", "Такси"], correct: 1 }
+    ];
+
+    let currentQuestion = 0;
+    let score = 0;
+    let wrongAnswersList = [];
+
+    const questionEl = document.getElementById("question");
+    const answersEl = document.getElementById("answers");
+    const nextBtn = document.getElementById("nextBtn");
+    const resultEl = document.getElementById("result");
+    const wrongAnswersEl = document.getElementById("wrongAnswers");
+    const progressBar = document.getElementById("progressBar");
+    const progressText = document.getElementById("progressText");
+    const policeOverlay = document.getElementById("policeOverlay");
+    const continueBtn = document.getElementById("continueBtn");
+
+    function updateProgressBar() {
+      const progress = ((currentQuestion + 1) / quizData.length) * 100;
+      progressBar.style.width = progress + "%";
+      progressText.textContent = `Вопрос ${currentQuestion + 1} из ${quizData.length}`;
+    }
+
+    function loadQuestion() {
+      const q = quizData[currentQuestion];
+      questionEl.textContent = q.question;
+      answersEl.innerHTML = "";
+      q.answers.forEach((answer, index) => {
+        const btn = document.createElement("button");
+        btn.textContent = answer;
+        btn.addEventListener("click", () => checkAnswer(index));
+        answersEl.appendChild(btn);
+      });
+      nextBtn.style.display = "none";
+      
+      updateProgressBar();
+    }
+
+    function checkAnswer(index) {
+      const q = quizData[currentQuestion];
+      const buttons = answersEl.querySelectorAll("button");
+      buttons.forEach((btn, i) => {
+        btn.disabled = true;
+        if (i === q.correct) {
+          btn.style.background = "#4CAF50";
+          btn.style.color = "white";
+        }
+        if (i === index && i !== q.correct) {
+          btn.style.background = "#f44336";
+          btn.style.color = "white";
+          wrongAnswersList.push({
+            question: q.question,
+            yourAnswer: q.answers[index],
+            correctAnswer: q.answers[q.correct]
+          });
+        }
+      });
+      if (index === q.correct) {
+        score++;
+      }
+      nextBtn.style.display = "inline-block";
+    }
+
+    nextBtn.addEventListener("click", () => {
+      currentQuestion++;
+      if (currentQuestion < quizData.length) {
+        loadQuestion();
+      } else {
+        showResult();
+      }
+    });
+
+    function showResult() {
+      // Скрываем основной контент викторины
+      document.getElementById('quiz').style.display = 'none';
+      progressText.textContent = "Викторина завершена!";
+      
+      // Проверяем, если 60% или более ошибок
+      const errorPercentage = (wrongAnswersList.length / quizData.length) * 100;
+      console.log(errorPercentage)
+      
+      if (errorPercentage >= 60) {
+        // Показываем полицейского
+        policeOverlay.classList.add('active');
+      } else {
+        // Показываем результаты сразу
+        displayFinalResults();
+      }
+    }
+
+    function displayFinalResults() {
+      // Показываем основной контент викторины
+      document.getElementById('quiz').style.display = 'block';
+      questionEl.textContent = "Игра окончена!";
+      answersEl.innerHTML = "";
+      nextBtn.style.display = "none";
+      resultEl.textContent = `Ваш результат: ${score} из ${quizData.length}`;
+      
+      // Обновляем progress bar до 100%
+      progressBar.style.width = "100%";
+
+      if (wrongAnswersList.length > 0) {
+        let html = "<h3>Ошибки:</h3><ul>";
+        wrongAnswersList.forEach(item => {
+          html += `<li><b>${item.question}</b><br>❌ Ваш ответ: ${item.yourAnswer}<br>✅ Правильный ответ: ${item.correctAnswer}</li><br>`;
+        });
+        html += "</ul>";
+        wrongAnswersEl.innerHTML = html;
+      }
+
+      if (score > 20) {
+        startFireworks();
+      }
+    }
+
+    // Обработчик для кнопки продолжения
+    continueBtn.addEventListener('click', function() {
+      policeOverlay.classList.remove('active');
+      displayFinalResults();
+    });
+
+    // === Салют ===
+    const canvas = document.getElementById("fireworks");
+    const ctx = canvas.getContext("2d");
+    let particles = [];
+    resizeCanvas();
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    function startFireworks() {
+      for (let i = 0; i < 5; i++) {
+        createFirework(Math.random() * canvas.width, Math.random() * canvas.height / 2);
+      }
+      animate();
+    }
+
+    function createFirework(x, y) {
+      let colors = ["#ff4d4d", "#4dff4d", "#4d4dff", "#ffff4d", "#ff4dff", "#4dffff"];
+      for (let i = 0; i < 100; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          angle: Math.random() * 2 * Math.PI,
+          speed: Math.random() * 5 + 2,
+          radius: 2,
+          life: 100,
+          color: colors[Math.floor(Math.random() * colors.length)]
+        });
+      }
+    }
+
+    function animate() {
+      ctx.fillStyle = "rgba(0,0,0,0.2)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      particles.forEach((p, index) => {
+        p.x += Math.cos(p.angle) * p.speed;
+        p.y += Math.sin(p.angle) * p.speed;
+        p.life--;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        if (p.life <= 0) particles.splice(index, 1);
+      });
+      if (particles.length > 0) {
+        requestAnimationFrame(animate);
+      }
+    }
+
+    // Предзагрузка изображения полицейского
+    const policeImg = new Image();
+    policeImg.src = 'https://foni.papik.pro/uploads/posts/2024-10/foni-papik-pro-aypc-p-kartinki-gaishnik-na-prozrachnom-fone-16.png';
+
+    loadQuestion();
+  </script>
+</body>
+</html>
